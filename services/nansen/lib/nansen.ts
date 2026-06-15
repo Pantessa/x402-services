@@ -14,8 +14,14 @@ export interface Pagination {
   per_page?: number;
 }
 
-function apiKey(): string {
-  const k = process.env.NANSEN_API_KEY;
+// Injectable seams for tests — production passes neither (env key, global fetch).
+export interface NansenOpts {
+  fetchImpl?: typeof fetch;
+  apiKey?: string;
+}
+
+function resolveKey(opts?: NansenOpts): string {
+  const k = opts?.apiKey ?? process.env.NANSEN_API_KEY;
   if (!k) throw new Error("Missing required env var: NANSEN_API_KEY");
   return k;
 }
@@ -31,12 +37,14 @@ export interface NansenResult {
 export async function nansenPost(
   path: string,
   body: Record<string, unknown>,
+  opts?: NansenOpts,
 ): Promise<NansenResult> {
-  const res = await fetch(`${NANSEN_BASE}${path}`, {
+  const doFetch = opts?.fetchImpl ?? fetch;
+  const res = await doFetch(`${NANSEN_BASE}${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      apikey: apiKey(),
+      apikey: resolveKey(opts),
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -50,15 +58,18 @@ export async function nansenPost(
     data = text;
   }
 
-  // Trim oversized payloads to keep MCP responses sane.
+  // Trim oversized payloads to keep MCP responses sane. We return a raw string
+  // slice rather than re-parsing a cut-off JSON fragment — slicing valid JSON
+  // mid-structure yields invalid JSON, so re-parsing would throw and crash the
+  // whole call on a large (but perfectly good) response.
   let truncated = false;
   if (typeof data !== "string") {
     const serialized = JSON.stringify(data);
     if (serialized.length > MAX_RESPONSE_CHARS) {
       truncated = true;
       data = {
-        note: `Response truncated to ${MAX_RESPONSE_CHARS} chars — narrow your query or page for more.`,
-        preview: JSON.parse(serialized.slice(0, MAX_RESPONSE_CHARS).replace(/[^}\]]*$/, "") || "{}"),
+        note: `Response truncated to ~${MAX_RESPONSE_CHARS} chars — narrow your query or page for more. \`preview\` is a raw (clipped) JSON string.`,
+        preview: serialized.slice(0, MAX_RESPONSE_CHARS),
       };
     }
   }
@@ -67,22 +78,32 @@ export async function nansenPost(
 }
 
 // ── Typed endpoint wrappers ──────────────────────────────────────────────────
-// Smart Money — chain-scoped flows across the tracked smart-money cohort.
+// Each accepts an optional trailing NansenOpts (test seam); production callers
+// omit it. Smart Money = chain-scoped cohort flows.
 export const smartMoney = {
-  netflows: (chains: string[], pagination?: Pagination) =>
-    nansenPost("/api/v1/smart-money/netflows", { chains, pagination }),
-  holdings: (chains: string[], pagination?: Pagination) =>
-    nansenPost("/api/v1/smart-money/holdings", { chains, pagination }),
-  dexTrades: (chains: string[], pagination?: Pagination) =>
-    nansenPost("/api/v1/smart-money/dex-trades", { chains, pagination }),
+  netflows: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
+    nansenPost("/api/v1/smart-money/netflows", { chains, pagination }, opts),
+  holdings: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
+    nansenPost("/api/v1/smart-money/holdings", { chains, pagination }, opts),
+  dexTrades: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
+    nansenPost("/api/v1/smart-money/dex-trades", { chains, pagination }, opts),
 };
 
 // Token God Mode — per-token analytics (needs a chain + token address).
 export const tgm = {
-  flowIntelligence: (chain: string, tokenAddress: string) =>
-    nansenPost("/api/v1/tgm/flow-intelligence", { chain, token_address: tokenAddress }),
-  whoBoughtSold: (chain: string, tokenAddress: string, pagination?: Pagination) =>
-    nansenPost("/api/v1/tgm/who-bought-sold", { chain, token_address: tokenAddress, pagination }),
-  tokenScreener: (chains: string[], pagination?: Pagination) =>
-    nansenPost("/api/v1/tgm/token-screener", { chains, pagination }),
+  flowIntelligence: (chain: string, tokenAddress: string, opts?: NansenOpts) =>
+    nansenPost("/api/v1/tgm/flow-intelligence", { chain, token_address: tokenAddress }, opts),
+  whoBoughtSold: (
+    chain: string,
+    tokenAddress: string,
+    pagination?: Pagination,
+    opts?: NansenOpts,
+  ) =>
+    nansenPost(
+      "/api/v1/tgm/who-bought-sold",
+      { chain, token_address: tokenAddress, pagination },
+      opts,
+    ),
+  tokenScreener: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
+    nansenPost("/api/v1/tgm/token-screener", { chains, pagination }, opts),
 };
