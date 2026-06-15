@@ -1,5 +1,32 @@
 # x402-services — autopilot log
 
+## ✅ RUN COMPLETE (2026-06-15 16:08) — all 8 queue items done
+Built this run, all verified green, **local commits only** (no remote/deploy):
+- **Monorepo** (`x402-services`): pnpm workspace + Turborepo + `@yeetful/x402-service-kit`
+  (shared x402 v2 gate, Bazaar discovery, clean-path MCP factory).
+- **Nansen MCP service** (`services/nansen`): clean `/mcp` path (no `mcp/mcp`),
+  6 tools over the real api.nansen.ai client (key server-side), x402-gated.
+  tsc + next build + 11/11 tests (payment-gate + client unit tests) green.
+- **Trading-agent `YeetfulSource`** (committed in the trading-agent repo, 9b03fbd):
+  pays for Nansen smart-money via the MCP, additive `wSmart` in the strategy
+  (free runs byte-identical), graceful degrade. tsc + 9/9 smoke green.
+
+### Needs the OWNER (blocked here by guardrails)
+1. **Nansen reseller ToS** — confirm wrapping/reselling Nansen over x402 is
+   permitted before listing publicly. Legal go/no-go.
+2. **Deploy** — one Vercel project per service (Root Directory `services/<svc>`)
+   + its subdomain (e.g. `nansen.yeetful.com`); see README. Set env per project:
+   `NANSEN_API_KEY`, `PAYMENT_ADDRESS`, `CDP_API_KEY_ID/SECRET`, `X402_NETWORK=base`.
+3. **Push** — decide whether `x402-services` (and the trading-agent commits) go
+   to a remote (e.g. a private `Yeetful/x402-services`). Nothing pushed yet.
+4. **Run the experiment** — once Nansen is live + a burner funded, set in the
+   trading-agent: `MARKET_SOURCE=yeetful`, `NANSEN_MCP_URL`, `YEETFUL_PAYER_KEY`,
+   then compare `free:…` vs `yeetful:…` AgentRun outcomes.
+5. **anthropic-mcp Bazaar re-index** (separate thread) — its input-schema fix is
+   already live; the validator just needs a re-crawl (a fresh CDP-settled payment).
+
+---
+
 Self-paced build run started 2026-06-15. Goal: a pnpm-workspace monorepo of
 thin x402 services, each deployed to its own Vercel project + subdomain, sharing
 one payment/discovery kit. First service: **Nansen** (MCP server + x402 wrapper),
@@ -25,9 +52,10 @@ are the owner's call.
    smart-money netflow over x402, MARKET_SOURCE=yeetful, additive wSmart in the
    strategy (free runs byte-identical), graceful degrade. Committed in the
    trading-agent repo (9b03fbd). tsc + 9/9 smoke green.
-8. [ ] Stretch: nansen client unit tests (mocked fetch — assert path/header/body
-   per tool, no network), per-tool discovery polish, maybe a generic example
-   service to prove the kit beyond Nansen.
+8. [DONE] Nansen client made testable (injectable fetch+key) + 9 unit tests;
+   caught & fixed a truncation crash (slicing+reparsing JSON threw on large
+   responses). 11/11 tests pass. Skipped the optional generic example service
+   (kit already proven; not worth the over-engineering).
 
 ## Nansen API (grounded from docs.nansen.ai/llms-full.txt)
 - Base `https://api.nansen.ai`, auth header `apikey: <key>`, all POST + JSON.
@@ -61,3 +89,9 @@ are the owner's call.
   YEETFUL_PAYER_KEY set; else degrades). Added x402-fetch + viem to the agent.
   tsc clean; 9/9 smoke checks. Next: item 8 (nansen client mocked-fetch tests +
   discovery polish).
+- 2026-06-15 16:08 — Item 8 DONE + RUN COMPLETE. Made nansen.ts testable
+  (injectable fetch/key), added 9 unit tests; they caught a real truncation
+  crash (JSON slice+reparse throws on large payloads) — fixed to a safe raw
+  string preview. 11/11 tests, kit+nansen tsc + build green. Skipped the
+  optional example service. All 8 items done; remaining work needs the owner
+  (see "RUN COMPLETE" up top). Stopping the loop.
