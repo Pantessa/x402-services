@@ -77,12 +77,22 @@ export async function nansenPost(
   return { ok: res.ok, status: res.status, data, truncated };
 }
 
+// Default to a recent window where an endpoint requires one. ISO YYYY-MM-DD.
+function defaultDateRange(days = 30): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 86_400_000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: iso(from), to: iso(to) };
+}
+
 // ── Typed endpoint wrappers ──────────────────────────────────────────────────
-// Each accepts an optional trailing NansenOpts (test seam); production callers
-// omit it. Smart Money = chain-scoped cohort flows.
+// Paths verified against docs.nansen.ai (the API uses singular `netflow`, and
+// the token screener lives at /api/v1/token-screener, NOT under /tgm). Each
+// accepts an optional trailing NansenOpts (test seam); production omits it.
+// Smart Money = chain-scoped cohort flows.
 export const smartMoney = {
   netflows: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
-    nansenPost("/api/v1/smart-money/netflows", { chains, pagination }, opts),
+    nansenPost("/api/v1/smart-money/netflow", { chains, pagination }, opts),
   holdings: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
     nansenPost("/api/v1/smart-money/holdings", { chains, pagination }, opts),
   dexTrades: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
@@ -93,6 +103,7 @@ export const smartMoney = {
 export const tgm = {
   flowIntelligence: (chain: string, tokenAddress: string, opts?: NansenOpts) =>
     nansenPost("/api/v1/tgm/flow-intelligence", { chain, token_address: tokenAddress }, opts),
+  // who-bought-sold requires a mandatory date range; default to the last 30 days.
   whoBoughtSold: (
     chain: string,
     tokenAddress: string,
@@ -101,9 +112,10 @@ export const tgm = {
   ) =>
     nansenPost(
       "/api/v1/tgm/who-bought-sold",
-      { chain, token_address: tokenAddress, pagination },
+      { chain, token_address: tokenAddress, date: defaultDateRange(), pagination },
       opts,
     ),
+  // Token screener: top-level path (not under /tgm) and requires a timeframe.
   tokenScreener: (chains: string[], pagination?: Pagination, opts?: NansenOpts) =>
-    nansenPost("/api/v1/tgm/token-screener", { chains, pagination }, opts),
+    nansenPost("/api/v1/token-screener", { chains, timeframe: "24h", pagination }, opts),
 };

@@ -33,7 +33,7 @@ describe("nansen client — request construction (no network)", () => {
 
     expect(calls).toHaveLength(1);
     const { url, init } = calls[0];
-    expect(url).toBe(`${BASE}/api/v1/smart-money/netflows`);
+    expect(url).toBe(`${BASE}/api/v1/smart-money/netflow`);
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).apikey).toBe(KEY);
     expect((init.headers as Record<string, string>)["content-type"]).toBe(
@@ -70,21 +70,26 @@ describe("nansen client — request construction (no network)", () => {
     });
   });
 
-  it("tgm.whoBoughtSold + tokenScreener build their bodies", async () => {
+  it("tgm.whoBoughtSold sends chain+token+a default date range", async () => {
     const w = optsWith({ body: {} });
     await tgm.whoBoughtSold("base", "0xDEF", { per_page: 5 }, w.opts);
     expect(w.calls[0].url).toBe(`${BASE}/api/v1/tgm/who-bought-sold`);
-    expect(JSON.parse(w.calls[0].init.body as string)).toEqual({
-      chain: "base",
-      token_address: "0xDEF",
-      pagination: { per_page: 5 },
-    });
+    const body = JSON.parse(w.calls[0].init.body as string);
+    expect(body.chain).toBe("base");
+    expect(body.token_address).toBe("0xDEF");
+    expect(body.pagination).toEqual({ per_page: 5 });
+    // date range is required by Nansen — defaulted to ISO YYYY-MM-DD from/to.
+    expect(body.date.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.date.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 
+  it("tgm.tokenScreener hits the top-level path with a timeframe", async () => {
     const s = optsWith({ body: {} });
     await tgm.tokenScreener(["ethereum", "base"], undefined, s.opts);
-    expect(s.calls[0].url).toBe(`${BASE}/api/v1/tgm/token-screener`);
+    expect(s.calls[0].url).toBe(`${BASE}/api/v1/token-screener`);
     expect(JSON.parse(s.calls[0].init.body as string)).toEqual({
       chains: ["ethereum", "base"],
+      timeframe: "24h",
       pagination: undefined,
     });
   });
