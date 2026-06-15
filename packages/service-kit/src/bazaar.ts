@@ -22,12 +22,16 @@ export interface McpDiscoveryInput {
 }
 
 export function mcpDiscovery(input: McpDiscoveryInput): Record<string, unknown> {
+  // Keep info.input MINIMAL — { type, toolName, inputSchema }. Although
+  // @x402/extensions happily emits AND self-validates the optional
+  // description/transport/example keys, agentic.market's stricter
+  // `discover_resource` parser rejects them ("input has an unrecognized shape"
+  // → invalid discovery configuration). The minimal shape is the intersection
+  // every consumer accepts. The human-readable description lives on the resource
+  // (resource.description); we keep the output example (a sibling of input).
   return declareDiscoveryExtension({
     toolName: input.toolName,
-    description: input.description,
-    transport: input.transport ?? "streamable-http",
     inputSchema: input.inputSchema,
-    example: input.example,
     output: input.output,
   });
 }
