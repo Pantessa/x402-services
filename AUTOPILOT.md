@@ -17,8 +17,10 @@ Built this run, all verified green, **local commits only** (no remote/deploy):
 2. **Deploy** — one Vercel project per service (Root Directory `services/<svc>`)
    + its subdomain (e.g. `nansen.yeetful.com`); see README. Set env per project:
    `NANSEN_API_KEY`, `PAYMENT_ADDRESS`, `CDP_API_KEY_ID/SECRET`, `X402_NETWORK=base`.
-3. **Push** — decide whether `x402-services` (and the trading-agent commits) go
-   to a remote (e.g. a private `Yeetful/x402-services`). Nothing pushed yet.
+3. **Push** — DONE for x402-services: pushed PUBLIC to
+   github.com/Yeetful/x402-services (2026-06-15, owner-directed). NOTE: this
+   means the Nansen wrapper is public before the ToS check (#1) — owner chose
+   this knowingly. The trading-agent commits are still local (not pushed).
 4. **Run the experiment** — once Nansen is live + a burner funded, set in the
    trading-agent: `MARKET_SOURCE=yeetful`, `NANSEN_MCP_URL`, `YEETFUL_PAYER_KEY`,
    then compare `free:…` vs `yeetful:…` AgentRun outcomes.
