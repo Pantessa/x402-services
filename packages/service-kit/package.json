@@ -1,0 +1,33 @@
+{
+  "name": "@yeetful/x402-service-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared x402 v2 payment-gate + Bazaar discovery plumbing for Yeetful's services. Each service stays a thin adapter; this kit owns the payment logic so an x402 version bump is one PR, not N repos.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"(no lint)\"",
+    "test": "echo \"(kit covered via service tests)\"",
+    "build": "echo \"(source package — consumed via workspace)\""
+  },
+  "dependencies": {
+    "@coinbase/x402": "2.1.0",
+    "@x402/core": "2.14.0",
+    "@x402/evm": "2.14.0",
+    "@x402/extensions": "2.14.0",
+    "@x402/next": "2.14.0",
+    "mcp-handler": "1.1.0"
+  },
+  "peerDependencies": {
+    "next": ">=16",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "next": "16.2.7",
+    "zod": "^3.25.0",
+    "typescript": "^5.7.3"
+  }
+}
