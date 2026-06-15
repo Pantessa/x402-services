@@ -21,10 +21,13 @@ are the owner's call.
    `/[transport]` (→ /mcp), `/api/info`, Proxy middleware active. NO /api/mcp/mcp.
 6. [DONE] Polish — README with the Vercel monorepo setup (Root Directory +
    domains) the owner asked about.
-7. [ ] (payoff) trading-agent `YeetfulSource` that pings the Nansen MCP for
-   smart-money signal on MORPHO/SYRUP/HYPE/SKY — the "does paid data help?" hook.
-8. [ ] Stretch: per-tool discovery polish, nansen client unit tests (mocked
-   fetch), a generic example service to prove the kit beyond Nansen.
+7. [DONE] (payoff) trading-agent `YeetfulSource` — composes free + Nansen
+   smart-money netflow over x402, MARKET_SOURCE=yeetful, additive wSmart in the
+   strategy (free runs byte-identical), graceful degrade. Committed in the
+   trading-agent repo (9b03fbd). tsc + 9/9 smoke green.
+8. [ ] Stretch: nansen client unit tests (mocked fetch — assert path/header/body
+   per tool, no network), per-tool discovery polish, maybe a generic example
+   service to prove the kit beyond Nansen.
 
 ## Nansen API (grounded from docs.nansen.ai/llms-full.txt)
 - Base `https://api.nansen.ai`, auth header `apikey: <key>`, all POST + JSON.
@@ -50,3 +53,11 @@ are the owner's call.
   schema is still on the wire (tests assert it). Do not chase it.
   Next: item 7 (trading-agent YeetfulSource) + item 8 polish. Local commits
   only; no push/deploy/payments.
+- 2026-06-15 16:02 — Item 7 DONE (in the trading-agent repo, commit 9b03fbd).
+  YeetfulSource pays for Nansen smart-money via the MCP and folds a [-1,1]
+  signal into MarketSnapshot; strategy gained an ADDITIVE wSmart term (free runs
+  unchanged). nansen-client splits pure logic (parseNetflows/deriveSignal,
+  tested) from a guarded MCP-over-HTTP transport (x402-fetch payer when
+  YEETFUL_PAYER_KEY set; else degrades). Added x402-fetch + viem to the agent.
+  tsc clean; 9/9 smoke checks. Next: item 8 (nansen client mocked-fetch tests +
+  discovery polish).
