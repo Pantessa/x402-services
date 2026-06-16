@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildVoteTypedData, submitVote, SNAPSHOT_DOMAIN } from "@/lib/vote";
+import { buildVoteTypedData, submitVote, resolveChoiceLabel, SNAPSHOT_DOMAIN } from "@/lib/vote";
 
 const HASH = "0x" + "a".repeat(64); // a bytes32-shaped proposal id
 const FROM = "0x1111111111111111111111111111111111111111";
@@ -54,6 +54,38 @@ describe("buildVoteTypedData — EIP-712 type selection", () => {
     expect(() => buildVoteTypedData({ from: FROM, space: "x.eth", proposalId: HASH, proposalType: "basic", choice: [1] as never, timestamp: TS })).toThrow();
     expect(() => buildVoteTypedData({ from: FROM, space: "x.eth", proposalId: HASH, proposalType: "approval", choice: 1 as never, timestamp: TS })).toThrow();
     expect(() => buildVoteTypedData({ from: FROM, space: "x.eth", proposalId: HASH, proposalType: "basic", choice: 0, timestamp: TS })).toThrow();
+  });
+});
+
+describe("resolveChoiceLabel — free-text → 1-indexed choice", () => {
+  const basic = ["For", "Against", "Abstain"];
+  it("matches exact labels case-insensitively", () => {
+    expect(resolveChoiceLabel("For", basic, "basic")).toBe(1);
+    expect(resolveChoiceLabel("against", basic, "single-choice")).toBe(2);
+    expect(resolveChoiceLabel("ABSTAIN", basic, "basic")).toBe(3);
+  });
+  it("maps synonyms (yes/no/approve/reject)", () => {
+    expect(resolveChoiceLabel("yes", basic, "basic")).toBe(1);
+    expect(resolveChoiceLabel("approve", basic, "basic")).toBe(1);
+    expect(resolveChoiceLabel("no", basic, "basic")).toBe(2);
+    expect(resolveChoiceLabel("reject", basic, "basic")).toBe(2);
+  });
+  it("parses option/number forms", () => {
+    expect(resolveChoiceLabel("option 2", basic, "basic")).toBe(2);
+    expect(resolveChoiceLabel("3", basic, "basic")).toBe(3);
+  });
+  it("approval/ranked → number[] from a label list", () => {
+    const opts = ["Alpha", "Bravo", "Charlie"];
+    expect(resolveChoiceLabel("Alpha, Charlie", opts, "approval")).toEqual([1, 3]);
+    expect(resolveChoiceLabel("Bravo and Alpha", opts, "ranked-choice")).toEqual([2, 1]);
+  });
+  it("substring fallback", () => {
+    expect(resolveChoiceLabel("incentive", ["Keep current", "Incentive program"], "basic")).toBe(2);
+  });
+  it("throws on no match, out-of-range, and weighted", () => {
+    expect(() => resolveChoiceLabel("banana", basic, "basic")).toThrow();
+    expect(() => resolveChoiceLabel("option 9", basic, "basic")).toThrow(/range/i);
+    expect(() => resolveChoiceLabel("For", basic, "weighted")).toThrow(/weight/i);
   });
 });
 
