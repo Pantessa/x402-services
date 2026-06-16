@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { createMcpHandler } from "mcp-handler";
 import { queries, fetchProposalForVote, type SnapshotResult } from "./snapshot";
-import { buildVoteTypedData, submitVote } from "./vote";
+import { buildVoteTypedData, submitVote, resolveChoiceLabel, type SnapshotChoice } from "./vote";
 
 function present(result: SnapshotResult) {
   if (!result.ok) {
@@ -109,7 +109,7 @@ export function registerSnapshotTools(server: Server): void {
     {
       title: "Prepare Vote (EIP-712)",
       description:
-        "Build the EIP-712 typed data for a Snapshot vote, ready for the voter to sign with their own wallet. Choices are 1-indexed (1 = first option). `choice` shape depends on the proposal type: a number for single-choice/basic, a number array for approval/ranked-choice, or a {index:weight} map for weighted/quadratic. Returns the typed data plus a human summary; the signed result goes back through submit_vote.",
+        "Build the EIP-712 typed data for a Snapshot vote, ready for the voter to sign with their own wallet. Provide EITHER `choice` (1-indexed: a number for single-choice/basic, a number array for approval/ranked-choice, or a {index:weight} map for weighted/quadratic) OR `choiceText` (a human label like \"For\", \"yes\", \"Against\", \"option 2\", or \"A, C\" — resolved against the proposal's choices server-side). Returns the typed data plus a human summary; the signed result goes back through submit_vote.",
       inputSchema: {
         proposal: z.string().min(1).describe("Proposal id (0x… hash) to vote on."),
         from: z
@@ -118,35 +118,47 @@ export function registerSnapshotTools(server: Server): void {
           .describe("The voter's wallet address (the signer)."),
         choice: z
           .union([z.number().int(), z.array(z.number().int()), z.record(z.number()), z.string()])
+          .optional()
           .describe("1-indexed choice. number | number[] | {index:weight} per proposal type."),
+        choiceText: z
+          .string()
+          .optional()
+          .describe('Human choice label, e.g. "For", "yes", "Against", "option 2", "A and C".'),
         reason: z.string().optional().describe("Optional reason attached to the vote."),
       },
     },
-    async ({ proposal, from, choice, reason }) => {
+    async ({ proposal, from, choice, choiceText, reason }) => {
       try {
         const p = await fetchProposalForVote(proposal);
         if (p.state !== "active") {
           return fail(`Proposal is "${p.state}", not active — voting is closed. (${p.title})`);
+        }
+        let resolved: SnapshotChoice | undefined = choice;
+        if (resolved === undefined && choiceText !== undefined) {
+          resolved = resolveChoiceLabel(choiceText, p.choices, p.type);
+        }
+        if (resolved === undefined) {
+          return fail("Provide a `choice` or a `choiceText` to vote.");
         }
         const typedData = buildVoteTypedData({
           from,
           space: p.space.id,
           proposalId: p.id,
           proposalType: p.type,
-          choice,
+          choice: resolved,
           reason,
         });
-        const picked = Array.isArray(choice)
-          ? choice.map((c) => p.choices[c - 1]).filter(Boolean)
-          : typeof choice === "number"
-            ? [p.choices[choice - 1]].filter(Boolean)
-            : typeof choice === "object" && choice !== null
-              ? Object.keys(choice as Record<string, number>).map((k) => p.choices[Number(k) - 1])
+        const picked = Array.isArray(resolved)
+          ? resolved.map((c) => p.choices[c - 1]).filter(Boolean)
+          : typeof resolved === "number"
+            ? [p.choices[resolved - 1]].filter(Boolean)
+            : typeof resolved === "object" && resolved !== null
+              ? Object.keys(resolved as Record<string, number>).map((k) => p.choices[Number(k) - 1])
               : [];
         return ok({
           action: "sign_vote",
           proposal: { id: p.id, title: p.title, type: p.type, choices: p.choices, space: p.space.id },
-          choice,
+          choice: resolved,
           choiceLabels: picked,
           summary: `Vote on "${p.title}" (${p.space.id}) — selecting ${picked.join(", ") || JSON.stringify(choice)}. Sign with ${from} to cast it.`,
           typedData,

@@ -48,6 +48,56 @@ function normalizeChoice(choice: SnapshotChoice, t: ChoiceSolidityType): number 
   throw new Error('weighted/quadratic vote needs a weight map `choice` (e.g. {"1":1,"2":2}).');
 }
 
+// Common natural-language synonyms for the canonical For/Against/Abstain labels,
+// so "yes"/"approve" resolve to a "For" choice etc.
+const CHOICE_SYNONYMS: Record<string, string[]> = {
+  for: ["for", "yes", "yea", "yay", "aye", "approve", "approved", "support", "in favor", "in favour"],
+  against: ["against", "no", "nay", "reject", "rejected", "oppose", "opposed", "disapprove"],
+  abstain: ["abstain", "abstention", "neutral"],
+};
+
+/** Map free-text choice → the 1-indexed value(s) the proposal expects. Pure. */
+export function resolveChoiceLabel(
+  text: string,
+  choices: string[],
+  proposalType: string,
+): number | number[] {
+  const wantsArray = proposalType === "approval" || proposalType === "ranked-choice";
+  if (proposalType === "weighted" || proposalType === "quadratic") {
+    throw new Error("Weighted/quadratic proposals need an explicit weight map, not a label.");
+  }
+
+  const matchOne = (raw: string): number => {
+    const t = raw.trim().toLowerCase();
+    // "option 2" / "choice 2" / bare "2" → that 1-indexed position.
+    const numMatch = t.match(/^(?:option|choice|#)?\s*(\d+)$/);
+    if (numMatch) {
+      const n = Number(numMatch[1]);
+      if (n >= 1 && n <= choices.length) return n;
+      throw new Error(`Choice ${n} is out of range (1–${choices.length}).`);
+    }
+    // Exact (case-insensitive) label match.
+    const exact = choices.findIndex((c) => c.toLowerCase().trim() === t);
+    if (exact >= 0) return exact + 1;
+    // Synonym → find the choice whose label belongs to the same synonym group.
+    for (const syns of Object.values(CHOICE_SYNONYMS)) {
+      if (!syns.includes(t)) continue;
+      const idx = choices.findIndex((c) => syns.includes(c.toLowerCase().trim()));
+      if (idx >= 0) return idx + 1;
+    }
+    // Substring fallback (e.g. "incentive" → "[DIP] Incentive program").
+    const partial = choices.findIndex((c) => c.toLowerCase().includes(t) && t.length >= 3);
+    if (partial >= 0) return partial + 1;
+    throw new Error(`Could not match "${raw}" to a choice. Options: ${choices.join(", ")}.`);
+  };
+
+  if (wantsArray) {
+    const parts = text.split(/\s*(?:,|and|\+|&)\s*/i).filter(Boolean);
+    return parts.map(matchOne);
+  }
+  return matchOne(text);
+}
+
 export interface VoteTypedData {
   domain: typeof SNAPSHOT_DOMAIN;
   types: { Vote: { name: string; type: string }[] };
