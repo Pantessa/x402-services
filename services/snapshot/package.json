@@ -1,0 +1,34 @@
+{
+  "name": "snapshot-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Snapshot DAO governance as an x402-paid MCP service (snapshot.yeetful.com/mcp): browse proposals/votes and build EIP-712 votes the user signs.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@yeetful/x402-service-kit": "workspace:*",
+    "@coinbase/x402": "2.1.0",
+    "@x402/core": "2.14.0",
+    "@x402/evm": "2.14.0",
+    "@x402/extensions": "2.14.0",
+    "@x402/next": "2.14.0",
+    "mcp-handler": "1.1.0",
+    "next": "16.2.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
