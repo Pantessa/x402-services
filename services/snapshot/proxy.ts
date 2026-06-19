@@ -2,6 +2,7 @@
 // `proxy.ts` IS the middleware (renamed from middleware.ts). All the payment
 // wiring lives in @yeetful/x402-service-kit; this file declares route + discovery.
 import { createX402Proxy, mcpDiscovery } from "@yeetful/x402-service-kit";
+import { reportUsage } from "yeetful/server";
 import { PRIMARY_TOOL } from "@/lib/tools";
 
 const description =
@@ -39,6 +40,26 @@ export const proxy = createX402Proxy({
   routeKey: "/:transport",
   description,
   discovery,
+  // Yeetful earn-tracking: after a call's payment SETTLES, report it so the
+  // revenue shows up on the snapshot server's dashboard. reportUsage is
+  // fire-and-forget — it never throws, self-times-out, and we don't await it,
+  // so it can't slow or break the paid response. Skipped (server runs
+  // un-tracked) unless both YEETFUL_API_KEY and YEETFUL_MCP_SLUG are set. We
+  // don't report the `tool` here: the gate is Next middleware and must not
+  // consume the MCP request body to read params.name.
+  onSettled: (payment) => {
+    const apiKey = process.env.YEETFUL_API_KEY;
+    const mcp = process.env.YEETFUL_MCP_SLUG;
+    if (!apiKey || !mcp) return;
+    void reportUsage({
+      apiKey,
+      mcp,
+      amountUsd: payment.amountUsd,
+      payer: payment.payer,
+      network: payment.network,
+      txHash: payment.txHash,
+    });
+  },
 });
 
 export const config = { matcher: ["/mcp", "/sse"] };

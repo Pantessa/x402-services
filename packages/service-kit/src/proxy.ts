@@ -19,6 +19,22 @@ import { loadX402Config, priceString } from "./config";
  * when present and fall back to the public x402.org facilitator (testnet, not
  * indexed) for local dev.
  */
+/**
+ * Normalized facts about one settled payment, handed to
+ * {@link X402ProxyOptions.onSettled}. Decoupled from the x402 wire types so
+ * callers (earn-tracking, analytics) don't have to import @x402/core.
+ */
+export interface SettledPayment {
+  /** The call's price in US dollars (the configured X402_PRICE_USD) as a number. */
+  amountUsd: number;
+  /** The paying agent's wallet address, if the facilitator exposed it. */
+  payer?: string;
+  /** The on-chain settlement transaction hash, if present. */
+  txHash?: string;
+  /** Human network name as configured (e.g. "base"), not a CAIP-2 id. */
+  network: string;
+}
+
 export interface X402ProxyOptions {
   /** Path pattern the gate matches, e.g. "/:transport" for a clean /mcp. */
   routeKey: string;
@@ -28,6 +44,14 @@ export interface X402ProxyOptions {
   discovery: Record<string, unknown>;
   maxTimeoutSeconds?: number;
   mimeType?: string;
+  /**
+   * Fired AFTER a payment settles successfully, with normalized facts. Use it
+   * for fire-and-forget side effects (e.g. Yeetful earn-tracking) — do NOT do
+   * slow awaited work here: it runs inside the settle path, so hand any I/O to a
+   * background primitive and return. Thrown errors are swallowed so a side
+   * effect can never break or fail the paid response.
+   */
+  onSettled?: (payment: SettledPayment) => void;
 }
 
 // Returns the proxy FUNCTION only. The service's proxy.ts must export `config`
@@ -61,6 +85,28 @@ export function createX402Proxy(opts: X402ProxyOptions) {
     // Validates/normalizes the bazaar payload on the way out; without it the
     // extension can be emitted unrecognized (stripped to `{}`).
     .registerExtension(bazaarResourceServerExtension);
+
+  // Earn-tracking / analytics hook. Fires only on a SUCCESSFUL settlement; the
+  // exact scheme settles the full configured price, so amountUsd is cfg.priceUsd
+  // (NOT result.amount, which is atomic units and only set for `upto`). We pass
+  // the human network name from env, not result.network (a CAIP-2 id). Wrapped
+  // so a side effect can never break settlement or slow the paid response.
+  if (opts.onSettled) {
+    const onSettled = opts.onSettled;
+    server.onAfterSettle(async (ctx) => {
+      try {
+        if (!ctx.result?.success) return;
+        onSettled({
+          amountUsd: Number(cfg.priceUsd),
+          payer: ctx.result.payer,
+          txHash: ctx.result.transaction,
+          network: process.env.X402_NETWORK ?? "base",
+        });
+      } catch {
+        /* telemetry must never surface to the caller */
+      }
+    });
+  }
 
   return paymentProxy(routes, server);
 }
