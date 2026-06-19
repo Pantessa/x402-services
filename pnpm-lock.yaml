@@ -130,6 +130,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
+      yeetful:
+        specifier: ^0.6.0
+        version: 0.6.0(viem@2.52.2)
       zod:
         specifier: ^3.25.0
         version: 3.25.76
@@ -3382,6 +3385,15 @@ packages:
 
   /yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
+    dev: false
+
+  /yeetful@0.6.0(viem@2.52.2):
+    resolution: {integrity: sha512-Ss7LulukZ90XSXmiycd2ozzP+lD5qKSbVVhZUwvXlIC0LNa6TBLIqqApM1qJ2Dyc401lXJOq+lIibSylnoPJxA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      viem: ^2.21.0
+    dependencies:
+      viem: 2.52.2(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /zod-to-json-schema@3.25.2(zod@3.25.76):

@@ -8,5 +8,9 @@ export {
   type X402Config,
 } from "./config";
 export { mcpDiscovery, type McpDiscoveryInput } from "./bazaar";
-export { createX402Proxy, type X402ProxyOptions } from "./proxy";
+export {
+  createX402Proxy,
+  type X402ProxyOptions,
+  type SettledPayment,
+} from "./proxy";
 export { createCleanMcpHandler } from "./mcp";
