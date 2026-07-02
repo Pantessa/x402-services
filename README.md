@@ -7,6 +7,8 @@ payment/discovery kit. Agents pay per call in USDC on Base; no API keys.
 ```
 packages/service-kit/     shared x402 v2 payment gate + Bazaar discovery + clean-path MCP factory
 services/nansen/          Nansen smart-money intelligence as MCP   → nansen.yeetful.com/mcp
+services/snapshot/        Snapshot DAO governance as MCP           → snapshot.yeetful.com/mcp
+services/uniswap/         Uniswap quotes + swap-tx building as MCP → uniswap.yeetful.com/mcp
 ```
 
 > `anthropic-mcp` lives in its own repo for now (it's live + earning). New
