@@ -1,5 +1,32 @@
 # x402-services — autopilot log
 
+## ✅ RUN (2026-07-02) — Uniswap MCP (D1, Nate-directed)
+**`services/uniswap`** — Uniswap on Base as an x402-paid MCP
+(uniswap.yeetful.com/mcp when deployed). Pure on-chain (no upstream key):
+- Tools: `quote` (exactIn across all v3 fee tiers via QuoterV2 eth_call),
+  `price` (most-liquid-pool slot0, orientation-correct), `pool_info` (v3 per
+  tier + canonical hookless **v4** pools via StateView — WETH pairs also probe
+  v4's NATIVE-ether pools), `build_swap` (fresh quote → min-out minus
+  slippageBps → SwapRouter02 `multicall(deadline,[exactInputSingle])`;
+  recipient pinned to payer; ERC-20 approve step included when allowance
+  short; ETH-in via msg.value needs no approval; advisory eth_call dry-run
+  with real revert reasons), `build_wrap`/`build_unwrap`, `convert_amount`.
+- Returns `{action:'send_transaction'}` — the exact payload the website's
+  transaction layer turns into an evm-tx artifact (CoW's sibling).
+- Addresses from developers.uniswap.org (v3 + v4 Base pages) AND proven live:
+  `npm run smoke` = 11/11 GREEN against Base mainnet (real quote 100 USDC →
+  ~0.0602 WETH, implied ETH ≈ $1.66k cross-consistent, v4 native pools read,
+  STF revert surfaced by the dry-run). Multicall batching + rate-limit-aware
+  `readRetry` (the free RPC 429s as JSON-RPC errors, which viem's transport
+  retry does NOT cover). vitest 11/11 · tsc · next build green.
+
+### Needs the OWNER
+1. Vercel project (root `services/uniswap`) + domain `uniswap.yeetful.com` +
+   envs (PAYMENT_ADDRESS, CDP keys; optional BASE_RPC_URL strongly advised).
+2. After deploy: website directory row + chat wiring (follow-up card filed —
+   evm-tx sign UI a.k.a. SignTxButton does not exist yet; only CoW's
+   SignOrderButton does).
+
 ## ✅ RUN COMPLETE (2026-06-15 16:08) — all 8 queue items done
 Built this run, all verified green, **local commits only** (no remote/deploy):
 - **Monorepo** (`x402-services`): pnpm workspace + Turborepo + `@yeetful/x402-service-kit`
