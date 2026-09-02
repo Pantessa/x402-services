@@ -45,7 +45,7 @@ Built this run, all verified green, **local commits only** (no remote/deploy):
    + its subdomain (e.g. `nansen.yeetful.com`); see README. Set env per project:
    `NANSEN_API_KEY`, `PAYMENT_ADDRESS`, `CDP_API_KEY_ID/SECRET`, `X402_NETWORK=base`.
 3. **Push** — DONE for x402-services: pushed PUBLIC to
-   github.com/Yeetful/x402-services (2026-06-15, owner-directed). NOTE: this
+   github.com/Pantessa/x402-services (2026-06-15, owner-directed). NOTE: this
    means the Nansen wrapper is public before the ToS check (#1) — owner chose
    this knowingly. The trading-agent commits are still local (not pushed).
 4. **Run the experiment** — once Nansen is live + a burner funded, set in the
