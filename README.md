@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/yeetful-x402-services-badge.png)](https://mseep.ai/app/yeetful-x402-services)
+
 # x402-services
 
 Yeetful's fleet of **x402-monetized services** — one repo, many thin services,
